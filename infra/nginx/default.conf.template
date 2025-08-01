@@ -3,6 +3,10 @@ server {
 	listen 80;
 	server_name zotplug.com www.zotplug.com;
 
+	location /.well-known/acme-challenge/ {
+		root /data/letsencrypt;
+	}
+
 	location / {
 		proxy_pass http://$FRONTEND_HOST:3000;
 		proxy_http_version 1.1;
@@ -11,6 +15,24 @@ server {
 		proxy_set_header Connection 'upgrade';
 		proxy_cache_bypass $http_upgrade;
 	}
+}
+
+# listen on https port 443
+server {
+    listen 443 ssl;
+    server_name zotplug.com www.zotplug.com;
+
+    ssl_certificate /etc/letsencrypt/live/zotplug.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/zotplug.com/privkey.pem;
+
+    location / {
+        proxy_pass http://$FRONTEND_HOST:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_cache_bypass $http_upgrade;
+    }
 }
 
 # API on port 4000

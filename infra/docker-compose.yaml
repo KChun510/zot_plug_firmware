@@ -3,8 +3,14 @@ services:
     build: ./nginx
     container_name: nginx
     profiles: ["prod"]
+    volumes:
+      - ./nginx/default.conf.template:/etc/nginx/templates/default.conf.template
+      - certbot-etc:/etc/letsencrypt
+      - certbot-var:/var/lib/letsencrypt
+      - ./nginx/certs:/data/letsencrypt  # for ACME challenge responses
     ports:
       - "80:80"
+      - "443:443"
       - "4000:4000"
     environment:
       - FRONTEND_HOST=frontend
@@ -14,6 +20,20 @@ services:
       - zotplug_net
     depends_on:
       - frontend
+
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    profiles: ["prod"]
+    volumes:
+      - certbot-etc:/etc/letsencrypt
+      - certbot-var:/var/lib/letsencrypt
+      - ./nginx/certs:/data/letsencrypt
+    entrypoint: /bin/sh -c "trap exit TERM; while :; do sleep 12h & wait $${!}; certbot renew --webroot -w /data/letsencrypt --deploy-hook 'nginx -s reload'; done"
+    networks:
+      - zotplug_net
+    depends_on:
+      - nginx
 
   frontend:
     image: zotpluguci/zot_plug_frontend:beta
@@ -93,6 +113,11 @@ services:
     volumes:
       - ~/pg_db/pgdata/:/var/lib/postgresql/data
       - ./pg_db/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+
+volumes:
+  certbot-etc:
+  certbot-var:
 
 networks:
   zotplug_net:
